@@ -1,0 +1,117 @@
+﻿/*eslint-disable */
+
+(function ($) {
+    var WEBAPI = '//dws.chileautos.cl/api-cla';
+    var domain = document.domain;
+
+    if (domain.toLowerCase() === 'beta.chileautos.cl' || domain.toLowerCase() === 'www.chileautos.cl') {
+        WEBAPI = '//ws.chileautos.cl/api-cla';
+    }
+
+  
+
+    var pathname = window.location.pathname;
+    $(document).data('pagina', pathname);
+    setTimeout(function () {
+        if (pathname !== "/") {
+
+            //Create expiring cookie, 7 days from then:
+            var datocookie = Cookies.get('prueba');
+            var feedbackcookie = Cookies.get('feedback');
+            getIp();
+            var maxChars = 500;
+
+
+
+            $('#comentarios').keyup(function () {
+                var chars = $(this).val().length;
+                var diff = maxChars - chars;
+                $('#contador').html(diff);
+            });
+
+            function DataPB(positivo, comentario, ip, pagina) {
+                this.positivo = positivo;
+                this.comentario = comentario;
+                this.ip = ip;
+                this.pagina = pagina;
+
+            }
+
+
+            $('#close').click(function () {
+                $('#paso0').addClass('hidden');
+                $('#paso1').addClass('hidden');
+                $('#paso2').addClass('hidden');
+                Cookies.set('feedback', 'true', { expires: 90, path: '/' });
+                $('#BtnFbk').addClass('animated');
+                $('#BtnFbk').removeClass('hidden');
+            });
+
+            if (feedbackcookie !== 'true') {
+                setTimeout(function () {
+                    $('#paso0').removeClass('hidden');
+                    $('#paso1').removeClass('hidden');
+                }, 2000);
+            }
+            else {
+                setTimeout(function () {
+                    $('#BtnFbk').addClass('animated');
+                    $('#BtnFbk').removeClass('hidden');
+                }, 2000);
+
+            }
+
+            $('#feedback-positive').click(function () {
+                $('#paso1').addClass('hidden');
+                $('#paso2').removeClass('hidden');
+                $(document).data('like', true);
+                $('#comentarios').val('');
+            });
+
+            $('#feedback-negative').click(function () {
+                $('#paso1').addClass('hidden');
+                $('#paso2').removeClass('hidden');
+                $(document).data('like', false);
+                $('#comentarios').val('');
+            });
+
+            function getIp() {
+                $.getJSON("https://api.ipify.org?format=jsonp&callback=?",
+                  function (json) {
+                      var ip = json.ip;
+                      $(document).data('ip', ip);
+                  }
+                );
+
+            }
+
+
+            $('#enviar').click(function () {
+                var comentarios = $('#comentarios').val();
+            
+                var dataPost = new DataPB($(document).data('like'), comentarios, $(document).data('ip'), $(document).data('pagina'));
+                Cookies.set('feedback', 'true', { expires: 90, path: '/' });
+
+                $('#paso2').addClass('hidden');
+                $('#paso0').addClass('hidden');
+                $.post(WEBAPI + '/util/feedback', dataPost, $.noop);
+                $('#BtnFbk').addClass('animated');
+                $('#BtnFbk').removeClass('hidden');
+
+            });
+
+            $('#BtnFbk').click(function () {
+                $('#paso0').removeClass('hidden');
+                $('#paso1').removeClass('hidden');
+                $('#BtnFbk').addClass('hidden');
+
+            });
+ 
+
+        }
+
+    }, 3000)
+
+})(jQuery)
+
+/*eslint-enable */

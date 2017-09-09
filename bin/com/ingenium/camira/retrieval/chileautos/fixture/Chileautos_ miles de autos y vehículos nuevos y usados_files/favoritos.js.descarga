@@ -1,0 +1,454 @@
+﻿/*eslint-disable */
+
+(function ($) {
+
+
+
+    var WEBAPI = '//dws.chileautos.cl/api-cla';
+    var domain = document.domain;
+
+    const MSJ_FAV_OK = 'Agregar a favoritos';
+    const MSJ_NOT_FAV = 'Quitar de favoritos';
+
+
+
+    if (domain.toLowerCase() === 'beta.chileautos.cl' || domain.toLowerCase() === 'www.chileautos.cl') {
+        WEBAPI = '//ws.chileautos.cl/api-cla';
+    } else if (domain.toLowerCase() !== 'web.dev.retail.ca.csnglobal.net') {
+        temp = domain + ':50214';
+        domain = temp;
+    }
+
+
+
+    obtenerFavoritos();
+    marcarFavorito();
+    esFavoritoCemagic();
+    lmprStrgEliminados();
+
+
+
+    var formatNumber = {
+        separador: ".", // separador para los miles
+        sepDecimal: ',', // separador para los decimales
+        formatear: function (num) {
+            num += '';
+            var splitStr = num.split('.');
+            var splitLeft = splitStr[0];
+            var splitRight = splitStr.length > 1 ? this.sepDecimal + splitStr[1] : '';
+            var regx = /(\d+)(\d{3})/;
+            while (regx.test(splitLeft)) {
+                splitLeft = splitLeft.replace(regx, '$1' + this.separador + '$2');
+            }
+            return this.simbol + splitLeft + splitRight;
+        },
+        new: function (num, simbol) {
+            this.simbol = simbol || '';
+            return this.formatear(num);
+        }
+    }
+
+
+
+    function getCookie(cname) {
+        var name = cname + "=";
+        var decodedCookie = decodeURIComponent(document.cookie);
+        var ca = decodedCookie.split(';');
+        for(var i = 0; i <ca.length; i++) {
+            var c = ca[i];
+            while (c.charAt(0) == ' ') {
+                c = c.substring(1);
+            }
+            if (c.indexOf(name) == 0) {
+                return c.substring(name.length, c.length);
+            }
+        }
+        return "";
+    }
+
+
+
+    function setCookie(cname, cvalue, exdays) {
+        var d = new Date();
+        d.setTime(d.getTime() + (exdays * 24 * 60 * 60 * 1000));
+        var expires = "expires=" + d.toUTCString();
+        document.cookie = cname + "=" + cvalue + ";" + expires + ";path=/";
+    }
+
+
+
+    function diffEnDias(fecha) {
+        var fechaInicio = new Date(fecha).getTime();
+        var fechaFin = new Date().getTime();
+        var diff = fechaFin - fechaInicio;
+
+        var res = Math.round(diff / (1000 * 60 * 60 * 24));
+        return res === 0 ? 'Un par de horas' : res + ' días';
+    }
+
+
+
+
+    function esFavoritoCemagic() {
+        var favList = localStorage.getItem('listadoFavorito');
+        if (favList !== null) {
+            var res = favList.split(",");
+            for (var i = 0; i < res.length; i++) {
+                $('.fav_' + res[i]).attr("src", '//' + domain + '/Content/assets/img/favorito.png');
+                $('.txt_' + res[i]).text(MSJ_NOT_FAV);
+            }
+        }
+
+    }
+
+
+
+    function marcarFavorito() {
+        var codigo = $('.fav').attr('rel');
+        if (typeof codigo === "undefined") {
+            return;
+        } else {
+            if (esFavorito(codigo) == -1) {
+                $('.fav_' + codigo).children().attr("src", '//' + domain + '/Content/assets/img/favorito-default.png');
+            } else {
+                $('.fav' + codigo).children().attr("src", '//' + domain + '/Content/assets/img/favorito.png');
+            }
+
+        }
+    }
+
+
+
+    $(document).on('click', '.favC', function (e) {
+        e.stopPropagation();
+        var codigo = $(this).attr('rel');
+
+        if (esFavorito(codigo) == -1) {
+            $(this).attr("src", '//' + domain + '/Content/assets/img/favorito.png');
+            guardarFavoritos(codigo);
+        } else {
+            $(this).attr("src",  '//'+domain+'/Content/assets/img/favorito-default.png');
+            eliminarFavorito(codigo);
+        }
+    });
+
+
+
+    function guardarFavoritos(objFavorito) {
+        if (localStorage.getItem('listadoFavorito') !== null) {
+            var temp = localStorage.getItem('listadoFavorito') + ',' + objFavorito;
+            localStorage.setItem('listadoFavorito', temp);
+        } else {
+            localStorage.setItem('listadoFavorito', objFavorito);
+        }
+
+    }
+
+
+
+    function eliminarFavorito(cod) {
+        var fav = localStorage.getItem('listadoFavorito');
+        var nuevoFav = '';
+        if (fav !== null) {
+
+            var pos = localStorage.getItem('listadoFavorito').search(cod);
+            var variosCodigo = localStorage.getItem('listadoFavorito').search(",");
+
+            if (pos == 0 && variosCodigo > 0) {
+                nuevoFav = fav.replace(cod + ',', "");
+            } else if (pos == 0 && variosCodigo == -1) {
+                localStorage.removeItem("listadoFavorito");
+                $('.bannerFav').removeClass("hide");
+                return;
+            } else {
+                nuevoFav = fav.replace(',' + cod, "");
+            }
+
+            if (nuevoFav === '') {
+                $('.bannerFav').removeClass("hide");
+            }
+
+            localStorage.removeItem("listadoFavorito");
+            localStorage.setItem('listadoFavorito', nuevoFav);
+
+        }
+    }
+
+
+
+    $('#btnElmnrFav').on('click', function () {
+        var lstFav = localStorage.getItem('FavEliminados');
+        if (lstFav === null || lstFav === '') {
+            //Mostar mensaje de informacion
+        } else {
+            var lst = lstFav.split(',');
+            for(i = 0;i < lst.length; i++ ){
+                var itm = lst[i];
+                eliminarFavorito(itm);
+                location.reload();
+            }
+
+        }
+    });
+
+    
+
+    function prtStck() {
+        var tempBase = getCookie('Comparador');
+        if (tempBase.includes("*"))
+            tempBase = tempBase.substring(0, tempBase.length - 1);
+
+        var base  =tempBase.split('*');
+        var stock = localStorage.getItem('FavEliminados').split(',');
+
+        var bTotal = (typeof base[0]  === "undefined"  || base[0] === "") ? 0 : base.length;
+        var sTotal = (typeof stock[0] === "undefined" || stock[0] === "") ? 0 : stock.length;
+
+        var total = bTotal + sTotal;
+        $('#cnt-cmp-slctd').html("(" + total + ")");
+        return total;
+    }
+
+
+
+    $(document).on('click', '.chbx-fav', function () {
+        var codigo = $(this).parent().parent().attr('rel');
+        var slctd = $(this).is(':checked');
+        var LIMIT = 6;
+        var stock = prtStck();
+        var cnt = stock;
+
+        var dspnbl = LIMIT - stock;
+
+        
+
+        if (stock <= LIMIT || stock !== '') {
+            if (slctd === true) {
+                if (cnt <= dspnbl){
+                    agregarTempEliminados(codigo);
+                    ++cnt;
+                }
+            } else {
+                sacarEliminadosTemp(codigo);
+                --cnt;
+            }
+
+        }
+
+        $('#cnt-cmp-slctd').html("(" + cnt + ")");
+
+    });
+
+
+    
+    $('#btnCmpFav').on('click', function () {
+        var lstTmpFv = getCookie('Comparador') + localStorage.getItem('FavEliminados').replace(/,/g, "*");
+        if (lstTmpFv !== null || lstTmpFv !== '') setCookie("Comparador", lstTmpFv + "*", 1);
+        location.href="../ComparaAvisos/index";
+    });
+
+
+
+    $('.fav').on('click', function () {
+        var codigo = $(this).attr('rel');
+
+        if (esFavorito(codigo) == -1) {
+            $(this).children().attr("src", '//' + domain + '/Content/assets/img/favorito.png');
+            $('.txt_' + codigo).text(MSJ_NOT_FAV);
+            guardarFavoritos(codigo);
+        } else {
+            $(this).children().attr("src", '//' + domain + '/Content/assets/img/favorito-default.png');
+            $('.txt_' + codigo).text(MSJ_FAV_OK);
+            eliminarFavorito(codigo);
+        }
+    });
+
+
+
+    function esFavorito(cod) {
+        if (localStorage.getItem('listadoFavorito') !== null) {
+            return localStorage.getItem('listadoFavorito').search(cod);
+        } else {
+            return -1;
+        }
+    }
+
+
+
+    function conversorCategoria(cat) {
+        var res = "";
+        switch (cat) {
+            case 1:
+                res = "auto"
+                break;
+            case 2:
+                res = "moto";
+                break;
+            case 4:
+                res = "camion";
+                break;
+            case 8:
+                res = "marina";
+                break;
+            default:
+                break;
+        }
+        return  res;
+    }
+
+
+
+
+    function lmprStrgEliminados() {
+        localStorage.setItem('FavEliminados', '');
+    }
+
+
+
+    function agregarTempEliminados(codigo){
+        var existe = localStorage.getItem('FavEliminados');
+        if (existe === null || existe === "") {
+            localStorage.setItem('FavEliminados', codigo);
+        } else {
+            localStorage.setItem('FavEliminados', existe + "," + codigo);
+        }
+    }
+
+
+
+    function sacarEliminadosTemp(cod) {
+        var fav = localStorage.getItem('FavEliminados');
+        var nuevoFav = '';
+        if (fav !== null) {
+
+            var pos = localStorage.getItem('FavEliminados').search(cod);
+            var variosCodigo = localStorage.getItem('FavEliminados').search(",");
+
+            if (pos == 0 && variosCodigo > 0) {
+                nuevoFav = fav.replace(cod + ',', "");
+            } else if (pos == 0 && variosCodigo == -1) {
+                localStorage.removeItem("FavEliminados");
+                return;
+            } else {
+                nuevoFav = fav.replace(',' + cod, "");
+            }
+            
+            localStorage.removeItem("FavEliminados");
+            localStorage.setItem('FavEliminados', nuevoFav);
+        }
+    }
+
+
+
+    $(document).on('click', '.favList', function () {
+        var codigo = $(this).attr('rel');
+
+        if (esFavorito(codigo) == -1) {
+            $(this).attr("src", '//' + domain + '/Content/assets/img/favorito.png');
+            guardarFavoritos(codigo);
+        } else {
+            $(this).attr("src", '//' + domain + '/Content/assets/img/favorito-default.png');
+            eliminarFavorito(codigo);
+            $('.' + codigo).addClass('hide');
+
+        }
+    });
+
+
+
+    function obtenerFavoritos() {
+        var page = $(location).attr('pathname');
+        if (page != "/Favoritos/Index") return false;
+        codigos = localStorage.getItem('listadoFavorito');
+        if (typeof codigos == "undefined") return;
+
+        var numFav = codigos.split(",").length;
+
+        var request = $.ajax({
+            url: WEBAPI + "/Favoritos/local/"+ codigos,
+            type: "GET",
+            datatype: "json"
+        });
+
+        request.done(function (result) {
+            $("#listadoFav").empty();
+            console.log(result);
+            prtStck();
+            data = result;
+            strFav = '';
+
+            var cont = result.length;
+            if (cont === 0) {
+                $("#bannerFav").removeClass('hide');
+                $(".lst-fav").addClass('hide');
+            } else {
+                $("#bannerFav").addClass('hide');
+                $(".lst-fav").removeClass('hide');
+            }
+            $("#numFav").html("("+result.length+")");
+            $.each(data, function (i, item) {
+
+                var url = "/" + conversorCategoria(item.id_categoria) + "/usado/details/CL-AD-" + item.cod_auto;
+
+                strFav += "<div class='row marbot media " + item.cod_auto + "'  rel='"+item.cod_auto+"'>";
+                strFav += "    <div class='col-xs-2 bordergris'>";
+                strFav += "         <input name='Tipo' type='checkbox' class='red chbx-fav' value=''>";
+                strFav += "         <div class='imagen-auto'><img class='img-responsive' src='" + item.foto + "'></div>";
+                strFav += "   </div>";
+
+                strFav += "   <div class='col-xs-4 bordergris'>";
+                strFav += "     <h4 class='titulo-auto'>" + item.mmv + "</h4>";
+                strFav += "     <ul class='key-features__listfav'>";
+                strFav += "         <li><i class='csn-icons csn-icons-odometer'></i> " + item.km + "</li>";
+                strFav += "         <li><i class='csn-icons csn-icons-garage'></i> " + item.categoria + "</li>";
+                strFav += "         <li><i class='csn-icons csn-icons-body'></i> " + item.tipo + "</li>";
+                strFav += "         <li><i class='zmdi zmdi-pin'></i> " + item.region + "</li>";
+                strFav += "    </ul>";
+                strFav += "   </div>";
+
+                var vendedor = "Automotora";
+                var clss = "warningfav";
+                if (item.cod_cliente === "14") {
+                    vendedor = "particular";
+                    clss = 'successfav';
+                }
+
+                strFav += "   <div class='col-xs-3 bordergris'>";
+                strFav += "      <p class='pull-left small'> publicado hace " + diffEnDias(item.fecha_ingreso) + "</p> <br />";
+                strFav += "      <a class='linktodo' href='/Cotizaciones/credito'>Cotiza tu crédito</a> <br />";
+                strFav += "  </div>";
+                
+                strFav += "   <div class='col-xs-3 bordergris'  rel=" + item.cod_auto + ">";
+                strFav += "      <button class='xerrar favList' type='button' id='close' rel=" + item.cod_auto + "></button>";
+                strFav += "      <p class='preciofav'>$ " + formatNumber.new(item.pesos) + " .-</p><br>";
+                strFav += "      <label class='label label-"+clss+" pull-right'>" + vendedor + "</label>";
+                strFav += "  </div>";
+                strFav += "</div>";
+
+            });
+            $("#listadoFav").html(strFav);
+        });
+
+        request.fail(function (jqXHR, textStatus) {
+            // mostrar imagen explicativa
+        });
+
+        $(document).on('click', '.media-body', function () {
+            var codigo =  $(this).attr('rel');
+            window.location.href =   codigo;
+        });
+
+
+
+        console.log(page + " - " + localStorage.getItem('listadoFavorito'));
+
+
+    }
+
+    
+
+})(jQuery)
+
+
+
+/*eslint-enable */

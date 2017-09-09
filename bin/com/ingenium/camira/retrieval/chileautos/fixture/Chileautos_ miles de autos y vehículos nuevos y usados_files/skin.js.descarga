@@ -1,0 +1,4 @@
+
+		(function(){
+			document.getElementsByClassName('logo--header')[0].setAttribute('style', 'z-index:1;position:relative');
+		})();
